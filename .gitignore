@@ -1,0 +1,20 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.db
+*.sqlite3
+*.sqlite
+
+# Frontend (Vite + React)
+node_modules/
+dist/
+.vite/
+
+# Editores
+.claude/
+*.swp
+
+# Sistema
+.DS_Store
