@@ -1,38 +1,52 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState, createContext, useContext } from 'react'
+import { ReactFlow, type Node, type Edge, type NodeProps, Background, Handle, Position } from '@xyflow/react'
 import { type Materia } from './types/Materia.ts'
+import '@xyflow/react/dist/style.css'
+
+type materiaNode = Node<{ materia: Materia }, 'materiaNode'>;
+
+const nodeTypes = { 'materiaNode': NodoMateria }
+
+const AprobarContext = createContext<(codigo: string) => void>(() => { })
 
 function App() {
-  const [materias, setMaterias] = useState<Materia[]>([
-    { id: 5501, nombre: "Programación I", codigo: "PROGI", correlativas: [], aprobada: true },
-    { id: 5502, nombre: "Programación II", codigo: "PROGII", correlativas: ["PROGI"], aprobada: false },
-  ])
+
+  const nodes: materiaNode[] = [
+    { id: '1', type: 'materiaNode', position: { x: 0, y: 0 }, data: { materia: { id: 111, nombre: "Programación I", codigo: "R-111", correlativas: [], aprobada: false } } },
+    { id: '2', type: 'materiaNode', position: { x: 0, y: 250 }, data: { materia: { id: 112, nombre: "Programación II", codigo: "R-121", correlativas: [], aprobada: true } } }
+  ];
+
+  const edges: Edge[] = [
+    { id: 'ed1-2', source: '1', target: '2' }
+  ]
+
+  const [materias, setMaterias] = useState<materiaNode[]>(nodes);
 
   function marcarAprobada(codigo: string) {
-    setMaterias(prevMaterias => prevMaterias.map(m => m.codigo === codigo ? { ...m, aprobada: true } : m))
+    setMaterias((prevMaterias) => prevMaterias.map(m => m.data.materia.codigo === codigo ? { ...m, data: { ...m.data, materia: { ...m.data.materia, aprobada: true } } } : m));
   }
 
   return (
     <>
-      {materias.map(m => <NodoMateria key={m.codigo} materia={m} onAprobar={(c) => marcarAprobada(c)} />)}
+      <AprobarContext.Provider value={marcarAprobada}>
+        <div style={{ height: '100vh' }}>
+          <ReactFlow nodes={materias} edges={edges} nodeTypes={nodeTypes}>
+            <Background />
+          </ReactFlow>
+        </div>
+      </AprobarContext.Provider>
     </>
   )
 }
 
-// destructuring de objeto para cada componente
-interface NodoMateriaProps {
-  materia: Materia;
-  onAprobar: (codigo: string) => void;
-}
-
-function NodoMateria({ materia, onAprobar }: NodoMateriaProps) {
+function NodoMateria({ data }: NodeProps<materiaNode>) {
+  const onAprobar = useContext(AprobarContext);
   return (
     <>
-      <h1>{materia.nombre}</h1>
-      <button onClick={() => onAprobar(materia.codigo)}> Marcar Aprobada </button>
+      <Handle type='target' position={Position.Top} />
+      <h1>{data.materia.nombre}</h1>
+      <button onClick={() => onAprobar(data.materia.codigo)}> Marcar Aprobada </button>
+      <Handle type='source' position={Position.Bottom} />
     </>
   )
 }
