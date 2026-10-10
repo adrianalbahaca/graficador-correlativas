@@ -3,5 +3,7 @@ export interface Materia {
   nombre: string;
   codigo: string;
   correlativas: string[];
-  aprobada: boolean;
+  aprobada: Estado;
 }
+
+export type Estado = 'pendiente' | 'regular' | 'aprobada'
