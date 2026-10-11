@@ -6,4 +6,4 @@ export interface Materia {
   aprobada: Estado;
 }
 
-export type Estado = 'pendiente' | 'regular' | 'aprobada'
+export type Estado = 'pendiente' | 'regular' | 'aprobada' | 'libre'

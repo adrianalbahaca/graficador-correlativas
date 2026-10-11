@@ -2,7 +2,9 @@ import { useState, createContext, useContext, useEffect } from 'react'
 import { ReactFlow, type Node, type Edge, type NodeProps, Background, Handle, Position } from '@xyflow/react'
 import { type Materia, type Estado } from './types/Materia.ts'
 import '@xyflow/react/dist/style.css'
+import './Mapa.css'
 import dagre from '@dagrejs/dagre'
+
 
 const ancho = 200;
 const alto = 260;
@@ -22,6 +24,7 @@ const nodeTypes = { 'materiaNode': NodoMateria }
 const AccionesContext = createContext<Acciones>({
   aprobar: () => {},
   regularizar: () =>{},
+  quedarLibre: () => {},
   estadoVisual: () => { return 'bloqueada' }
 })
 
@@ -61,7 +64,7 @@ function App() {
     else return 'bloqueada'
   }
 
-    // useState necesarios
+  // useState necesarios
   const [materias, setMaterias] = useState<materiaNode[]>(nodes);
   const [nodosConPosicion, setNodosConPosicion] = useState<materiaNode[]>(nodes);
 
@@ -102,17 +105,17 @@ function App() {
   useEffect(
     () => {
 
-      const dagreGraph = new dagre.graphlib.Graph()
-      dagreGraph.setDefaultEdgeLabel(() => ({}))
-      dagreGraph.setGraph({rankdir: 'TB'})
+      const dagreGraph = new dagre.graphlib.Graph();
+      dagreGraph.setDefaultEdgeLabel(() => ({}));
+      dagreGraph.setGraph({rankdir: 'TB'});
 
       materias.forEach((node) => {
         dagreGraph.setNode(node.id, { width: ancho, height: alto})
-      })
+      });
 
       edges.forEach((edge) => {
         dagreGraph.setEdge(edge.source, edge.target)
-      })
+      });
 
       dagre.layout(dagreGraph);
 
@@ -147,8 +150,7 @@ function NodoMateria({ data }: NodeProps<materiaNode>) {
   const accion = useContext(AccionesContext);
   return (
     <>
-      <div className={`nodo-materia nodo-materia--${accion.estadoVisual(data.materia)}`} 
-      style={{width: ancho, height: alto, border: '1px solid black'}}>
+      <div className={`nodo-materia nodo-materia--${accion.estadoVisual(data.materia)}`}>
         <Handle type='target' position={Position.Top} />
         <p>{data.materia.nombre}</p>
         <button onClick={() => accion.aprobar(data.materia.codigo)}> Marcar Aprobada </button>

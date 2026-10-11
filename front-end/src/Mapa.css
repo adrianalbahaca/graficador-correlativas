@@ -1,0 +1,296 @@
+/* =====================================================================
+   Mapa.css — estilos del mapa de correlativas
+   =====================================================================
+
+   Este archivo reemplaza a NodoMateria.css. Va de lo general a lo particular:
+
+     1. Paleta y medidas          (acá se cambian los colores del mapa)
+     2. Fondo del mapa
+     3. Tarjeta de materia: base
+     4. Tarjeta: un bloque por estado
+     5. Botones de la tarjeta
+     6. Líneas entre materias (edges)
+     7. Puntos de conexión (handles)
+     8. Espacio para crecer       (controles, minimapa, leyenda)
+
+   CÓMO SE LEE CSS (lo mínimo):
+     - Un bloque tiene la forma  selector { propiedad: valor; }
+     - `.nodo-materia` (con punto) es una CLASE: afecta a todo elemento que la tenga.
+       En App.tsx, className="nodo-materia nodo-materia--libre" le pone dos clases.
+     - Lo que empieza con `--` es una VARIABLE. Se declara una vez
+       (--mapa-azul: #4262e2;) y se usa donde haga falta con var(--mapa-azul).
+       Cambiás el valor en un solo lugar y cambia en todos los usos.
+     - Si dos reglas se pisan, gana la más específica; si empatan, gana la que viene después.
+
+   REGLAS DE ORO PARA EDITAR:
+     1. Empezá siempre por la sección 1. Casi todo lo que querés cambiar está ahí.
+     2. Un cambio por vez, y mirá el resultado antes del siguiente.
+     3. Probá primero en el inspector de Firefox (clic derecho > Inspeccionar):
+        ahí podés cambiar valores en vivo, y cuando algo te guste lo copiás acá.
+
+   IMPORTANTE (dos cosas que rompen en silencio):
+     - En App.tsx, este archivo se importa DESPUÉS del CSS de React Flow:
+         import '@xyflow/react/dist/style.css'
+         import './Mapa.css'
+       Si va antes, los cambios de las secciones 2, 6 y 7 no se aplican.
+     - Las medidas de la tarjeta (--mapa-nodo-ancho y --mapa-nodo-alto) tienen que
+       coincidir con las constantes `ancho` y `alto` de App.tsx, porque Dagre usa
+       esos números para separar los nodos.
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. PALETA Y MEDIDAS
+   ===================================================================== */
+
+:root {
+  /* Tus resaltadores. Los colores se escriben en hexadecimal: #rrggbb */
+  --mapa-malva: #eab0fd;
+  --mapa-violeta: #9940ba;
+  --mapa-azul: #4262e2;
+
+  /* Medidas de la tarjeta (ver aviso de arriba) */
+  --mapa-nodo-ancho: 200px;
+  --mapa-nodo-alto: 260px;
+  --mapa-radio: 14px; /* qué tan redondeadas son las esquinas */
+
+  /* Colores del tema claro */
+  --mapa-lienzo: #f8f7fa; /* fondo del mapa */
+  --mapa-puntos: #cfccd6; /* puntitos de la grilla */
+  --mapa-linea: #8d8a99; /* líneas entre materias */
+  --mapa-linea-grosor: 1.5; /* grosor de las líneas (sin unidad) */
+  --mapa-texto: #26222b; /* letra cuando el fondo de la tarjeta es transparente */
+}
+
+/* Colores del tema oscuro: se aplican solo si el sistema está en modo oscuro */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mapa-lienzo: #16171d;
+    --mapa-puntos: #3a3d48;
+    --mapa-linea: #7b7f8c;
+    --mapa-texto: #e8e4ee;
+  }
+}
+
+
+/* =====================================================================
+   2. FONDO DEL MAPA
+   `.react-flow` es el contenedor que crea la librería. Sus colores se cambian
+   pisando las variables `--xy-...`, que son las que ella usa por dentro.
+   ===================================================================== */
+
+.react-flow {
+  --xy-background-color-default: var(--mapa-lienzo);
+  --xy-background-pattern-dots-color-default: var(--mapa-puntos);
+}
+
+
+/* =====================================================================
+   3. TARJETA DE MATERIA: BASE
+   Lo que comparten los cuatro estados. Los colores no están acá: cada estado
+   (sección 4) define sus variables --nodo-fondo, --nodo-borde, etc., y esta
+   regla las usa. El valor que va después de la coma es el que se usa si el
+   estado no define esa variable.
+   ===================================================================== */
+
+.nodo-materia {
+  width: var(--mapa-nodo-ancho);
+  height: var(--mapa-nodo-alto);
+  box-sizing: border-box; /* el borde y el relleno cuentan dentro del ancho y alto */
+
+  /* Contenido centrado, uno debajo de otro */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px; /* espacio entre el nombre y los botones */
+  padding: 16px; /* espacio entre el borde y el contenido */
+
+  background: var(--nodo-fondo, transparent);
+  color: var(--nodo-texto, var(--mapa-texto));
+  border: var(--nodo-grosor, 2px) var(--nodo-estilo, solid) var(--nodo-borde);
+  border-radius: var(--mapa-radio);
+  box-shadow: 0 0 0 4px var(--nodo-halo, transparent); /* aro de color por fuera */
+
+  text-align: center;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+/* Nombre de la materia */
+.nodo-materia p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: break-word; /* parte las palabras muy largas en vez de salirse */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nodo-materia {
+    transition: none;
+  }
+}
+
+
+/* =====================================================================
+   4. TARJETA: UN BLOQUE POR ESTADO
+   Los nombres (--bloqueada, --libre, --regular, --aprobada) tienen que
+   coincidir con los valores de EstadoVisual en App.tsx.
+   Variables que se pueden definir en cada estado:
+     --nodo-fondo   color de relleno (o un patrón)
+     --nodo-borde   color del borde
+     --nodo-texto   color de la letra
+     --nodo-grosor  grosor del borde (por defecto 2px)
+     --nodo-estilo  solid (liso), dashed (rayado) o dotted (punteado)
+     --nodo-halo    color del aro por fuera de la tarjeta
+   ===================================================================== */
+
+/* Bloqueada: faltan correlativas. Apagada y con borde rayado, como las
+   líneas que le faltan. */
+.nodo-materia--bloqueada {
+  --nodo-fondo: #f3f4f6;
+  --nodo-borde: #b4bac4;
+  --nodo-texto: #565d6b;
+  --nodo-estilo: dashed;
+}
+
+/* Libre (habilitada: se puede cursar o rendir libre): el malva casi
+   transparente, con borde grueso para que resalte.
+   color-mix(...) mezcla el color con transparencia: 20% = bien clarito. */
+.nodo-materia--libre {
+  --nodo-fondo: color-mix(in srgb, var(--mapa-malva) 20%, transparent);
+  --nodo-borde: var(--mapa-violeta);
+  --nodo-grosor: 3px;
+  --nodo-halo: color-mix(in srgb, var(--mapa-violeta) 20%, transparent);
+}
+
+/* Regular: rayas diagonales azules, todavía sin completar.
+   Las tres variables de abajo controlan las rayas. */
+.nodo-materia--regular {
+  --raya-grosor: 6px; /* ancho de cada raya */
+  --raya-espacio: 8px; /* hueco entre rayas */
+  --raya-opacidad: 28%; /* qué tan fuertes se ven */
+
+  --nodo-fondo: repeating-linear-gradient(
+    135deg, /* ángulo: 135deg da rayas como "/" y 45deg como "\" */
+    color-mix(in srgb, var(--mapa-azul) var(--raya-opacidad), transparent) 0
+      var(--raya-grosor),
+    transparent var(--raya-grosor) calc(var(--raya-grosor) + var(--raya-espacio))
+  );
+  --nodo-borde: var(--mapa-azul);
+}
+
+/* Aprobada: el mismo azul con relleno completo. La letra es blanca porque
+   sobre este azul el negro no se lee bien. */
+.nodo-materia--aprobada {
+  --nodo-fondo: var(--mapa-azul);
+  --nodo-borde: color-mix(in srgb, var(--mapa-azul) 80%, black);
+  --nodo-texto: #ffffff;
+}
+
+/* Tema oscuro: solo se redefine lo que cambia */
+@media (prefers-color-scheme: dark) {
+  .nodo-materia--bloqueada {
+    --nodo-fondo: #1d1f26;
+    --nodo-borde: #424753;
+    --nodo-texto: #9ca3b0;
+  }
+
+  .nodo-materia--libre {
+    --nodo-fondo: color-mix(in srgb, var(--mapa-malva) 14%, transparent);
+    --nodo-borde: var(--mapa-malva);
+    --nodo-halo: color-mix(in srgb, var(--mapa-malva) 30%, transparent);
+  }
+
+  .nodo-materia--regular {
+    --raya-opacidad: 55%;
+    --nodo-borde: color-mix(in srgb, var(--mapa-azul) 70%, white);
+  }
+
+  .nodo-materia--aprobada {
+    --nodo-borde: color-mix(in srgb, var(--mapa-azul) 70%, white);
+  }
+}
+
+
+/* =====================================================================
+   5. BOTONES DE LA TARJETA
+   `currentColor` significa "el color de letra de la tarjeta": así los botones
+   se adaptan solos a cada estado.
+   ===================================================================== */
+
+.nodo-materia button {
+  font: inherit; /* usa la misma tipografía que el resto, no la del navegador */
+  font-size: 13px;
+  padding: 6px 12px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.nodo-materia button:hover {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+/* El aro que aparece al navegar con el teclado. No lo saques: es accesibilidad. */
+.nodo-materia button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Los botones de una materia bloqueada no hacen nada (el guard está en el
+   código): esto es solo el aviso visual. */
+.nodo-materia--bloqueada button {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* =====================================================================
+   6. LÍNEAS ENTRE MATERIAS (EDGES)
+   El color y el grosor salen de la sección 1. La línea rayada de las
+   correlativas que faltan se define en App.tsx (strokeDasharray).
+   ===================================================================== */
+
+.react-flow {
+  --xy-edge-stroke-default: var(--mapa-linea);
+  --xy-edge-stroke-width-default: var(--mapa-linea-grosor);
+  --xy-edge-stroke-selected-default: var(--mapa-violeta);
+}
+
+
+/* =====================================================================
+   7. PUNTOS DE CONEXIÓN (HANDLES)
+   Son los puntitos arriba y abajo de cada tarjeta, de donde nacen las líneas.
+   Descomentá el bloque para esconderlos (siguen funcionando, solo no se ven).
+   ===================================================================== */
+
+/*
+.react-flow__handle {
+  opacity: 0;
+}
+*/
+
+
+/* =====================================================================
+   8. ESPACIO PARA CRECER
+   Cuando agregues más piezas, sus estilos van acá. Ejemplos de los
+   selectores que usa la librería (descomentá y adaptá):
+   ===================================================================== */
+
+/* Botones de zoom (<Controls />)
+.react-flow__controls-button { }
+*/
+
+/* Minimapa (<MiniMap />)
+.react-flow__minimap { }
+*/
+
+/* Leyenda de estados (un componente tuyo, con className="leyenda")
+.leyenda { }
+*/
