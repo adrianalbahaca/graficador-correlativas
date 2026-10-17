@@ -55,7 +55,8 @@ def obtener_carrera():
 def hola():
     materias = obtener_carrera()
 
-    return "<p>Hola Mundo </p>"
+    # TODO: Procesar adecuadamente las materias para usar JSONify y pasarlo a 
+    # React
 
 
 # TODO: La idea es procesar la base de datos de MATERIAS, cargarla como un objeto de algún tipo
