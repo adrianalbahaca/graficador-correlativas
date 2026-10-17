@@ -1,7 +1,9 @@
-from flask import Flask
+from flask import Flask, jsonify
 import sqlite3
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:5173/"])
 
 DB_PATH = "database/mapa.db"
 
@@ -23,9 +25,7 @@ def obtener_carrera():
 
         # filas es una lista de tuplas que contiene (codigo_materia, nombre_materia, codigo_correlativa)
         # Nota que acá habrá materias repetidas por las correlativas
-        # TODO: Algoritmo para limpiar todo y dejar el elemento como debe ser
-        # Sugiero una lista de diccionarios, donde contenga el nombre, codigo y una lista de los codigos de las correlativas
-        
+
         # Buscar entre repetidos
         vistos = set()
         materias = []
@@ -39,24 +39,35 @@ def obtener_carrera():
         for materia in materias:
             corr = [tup[2] for tup in filas if materia[0] == tup[0]]
 
-            m = {
-                "codigo": materia[0],
-                "nombre": materia[1],
-                "correlativas": corr
-            }
+            if corr[0] is None:
+                corr = []
 
-            res.append(m)  # Esto después lo reviso
+            m = {"codigo": materia[0], "nombre": materia[1], "correlativas": corr}
+
+            res.append(m)
 
         print(res)
 
         return res
 
+
+@app.route("/api/materias/")
+def api_materias():
+    return jsonify(obtener_carrera())
+
+
 @app.route("/")
 def hola():
     materias = obtener_carrera()
 
-    # TODO: Procesar adecuadamente las materias para usar JSONify y pasarlo a 
+    # TODO: Procesar adecuadamente las materias para usar JSONify y pasarlo a
     # React
+
+    # materias es una lista de diccionarios con las claves "codigo", "nombre", y "correlativas"
+    # La última es una lista de códigos de materias correlativas
+    # Todas contienen Strings
+
+    return "<p>Por ahora, esto está escrito. Después, debe de reemplazarse con la página</p>"
 
 
 # TODO: La idea es procesar la base de datos de MATERIAS, cargarla como un objeto de algún tipo
