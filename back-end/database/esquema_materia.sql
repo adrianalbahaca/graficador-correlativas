@@ -1,4 +1,0 @@
-CREATE TABLE materia (
-  codigo TEXT PRIMARY KEY,
-  nombre TEXT NOT NULL
-) STRICT;

@@ -1,3 +1,8 @@
+CREATE TABLE materia(
+  codigo TEXT PRIMARY KEY,
+  nombre TEXT NOT NULL
+) STRICT;
+
 CREATE TABLE correlativas(
   codigo_materia TEXT NOT NULL,
   codigo_correlativa TEXT NOT NULL,
