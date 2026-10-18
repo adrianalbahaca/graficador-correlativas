@@ -10,9 +10,15 @@ const ancho = 200;
 const alto = 260;
 
 interface Acciones {
-  aprobar: (codigo:string) => void,
-  regularizar: (codigo:string) => void
+  aprobar: (codigo: string) => void,
+  regularizar: (codigo: string) => void
   estadoVisual: (materia: Materia) => estadoVisual
+}
+
+interface MateriaApi {
+  codigo: string
+  nombre: string
+  correlativas: string[]
 }
 
 type materiaNode = Node<{ materia: Materia }, 'materiaNode'>;
@@ -22,37 +28,62 @@ type estadoVisual = 'bloqueada' | 'cursable' | 'aprobada' | 'regular'
 const nodeTypes = { 'materiaNode': NodoMateria }
 
 const AccionesContext = createContext<Acciones>({
-  aprobar: () => {},
-  regularizar: () =>{},
-  quedarLibre: () => {},
+  aprobar: () => { },
+  regularizar: () => { },
   estadoVisual: () => { return 'bloqueada' }
 })
 
+/**
+ * TODO: Organizar código ahora que se entiende el orden de las cosas
+ * @returns 
+ */
+
 function App() {
 
-  // Hardcodeo de ejemplo de materias
-  const nodes: materiaNode[] = [
-    { id: '1', type: 'materiaNode', position: { x: 0, y: 0 }, data: { materia: { id: 111, nombre: "Programación I", codigo: "R-111", correlativas: [], aprobada: 'pendiente' } } },
-    { id: '2', type: 'materiaNode', position: { x: 0, y: 250 }, data: { materia: { id: 112, nombre: "Programación II", codigo: "R-112", correlativas: [], aprobada: 'pendiente' } } },
-    { id: '3', type: 'materiaNode', position: { x: 0, y: 500 }, data: { materia: {id: 113, nombre: "Análisis Matemático I", codigo: "R-113", correlativas: [], aprobada: 'aprobada'}}},
-    { id: '4', type: 'materiaNode', position: { x: 0, y: 750 }, data: { materia: {id: 121, nombre: "Análisis Matemático II", codigo: "R-121", correlativas: ["R-113"], aprobada: 'regular'}}},
-    { id: '5', type: 'materiaNode', position: { x: 0, y: 1000}, data: { materia: {id: 122, nombre: "Estructura de Datos y Algoritmos I", codigo: "R-122", correlativas: ["R-113", "R-112"], aprobada: 'pendiente'}}},
-    { id: '6', type: 'materiaNode', position: { x: 0, y: 1250}, data: { materia: {id: 123, nombre: "Lenguajes Formales y Computabilidad", codigo: "R-123", correlativas: [], aprobada: 'pendiente'}}},
-  ];
+  const nodos: materiaNode[] = [];
 
-  // Cálculo automático de bordes
+  const [materias, setMaterias] = useState<materiaNode[]>(nodos);
+  const [nodosConPosicion, setNodosConPosicion] = useState<materiaNode[]>(nodos);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:5000/api/materias/")
+      .then(response => response.json())
+      .then((datos: MateriaApi[]) => {
+        for (let i = 0; i < datos.length; i++) {
+          nodos.push({
+            id: `${i}`,
+            type: 'materiaNode',
+            position: { x: 0, y: 0 },
+            data: {
+              materia: {
+                id: i,
+                nombre: datos[i].nombre,
+                codigo: datos[i].codigo,
+                correlativas: datos[i].correlativas,
+                aprobada: 'pendiente'
+              }
+            }
+          })
+        }
+
+        setMaterias(nodos);
+      })
+      .catch(error => console.error(error))
+  }, [])
+
 
   // Función de cursable
-  function esCursable(materia : Materia) : boolean {
+  function esCursable(materia: Materia): boolean {
     return materia.correlativas.every((c) => {
-      const m = nodosConPosicion.find(elem => { return elem.data.materia.codigo === c});
+      const m = nodosConPosicion.find(elem => { return elem.data.materia.codigo === c });
       return m?.data.materia.aprobada === 'regular' || m?.data.materia.aprobada === 'aprobada'
     })
   }
 
-  function estadoMateria(materia : Materia) : estadoVisual {
+  // Función para determinar estado
+  function estadoMateria(materia: Materia): estadoVisual {
     if (esCursable(materia)) {
-      switch(materia.aprobada) {
+      switch (materia.aprobada) {
         case 'aprobada':
           return 'aprobada'
         case 'regular':
@@ -64,37 +95,35 @@ function App() {
     else return 'bloqueada'
   }
 
-  // useState necesarios
-  const [materias, setMaterias] = useState<materiaNode[]>(nodes);
-  const [nodosConPosicion, setNodosConPosicion] = useState<materiaNode[]>(nodes);
-
-  // Función que cambia el estado dependiendo si 
+  // Función que determina si una materia puede marcarse como aprobada
   function marcarAprobada(codigo: string) {
-    const materiaNodo = nodosConPosicion.find((nodo) => {return nodo.data.materia.codigo === codigo})
+    const materiaNodo = nodosConPosicion.find((nodo) => { return nodo.data.materia.codigo === codigo })
     const materia = materiaNodo?.data.materia
 
-    if (materia != undefined && esCursable(materia) )
+    if (materia != undefined && esCursable(materia))
       setNodosConPosicion((prevMaterias) => prevMaterias.map(m => m.data.materia.codigo === codigo ? { ...m, data: { ...m.data, materia: { ...m.data.materia, aprobada: 'aprobada' } } } : m));
   }
 
+  // Función que determina si una materia puede marcarse como regular
   function marcarRegularizada(codigo: string) {
     const materiaNodo = nodosConPosicion.find((nodo) => { return nodo.data.materia.codigo === codigo });
     const materia = materiaNodo?.data.materia
 
     if (materia != undefined && esCursable(materia) && materia.aprobada != 'aprobada')
-      setNodosConPosicion((prevMaterias) => prevMaterias.map(m => m.data.materia.codigo === codigo ? { ... m, data: { ... m.data, materia: { ... m.data.materia, aprobada: 'regular'}}} : m));
+      setNodosConPosicion((prevMaterias) => prevMaterias.map(m => m.data.materia.codigo === codigo ? { ...m, data: { ...m.data, materia: { ...m.data.materia, aprobada: 'regular' } } } : m));
   }
 
-  const edges: Edge[] = nodosConPosicion.flatMap( (nodo) => {
+  // Cálculo automatico de edges para el grafo
+  const edges: Edge[] = nodosConPosicion.flatMap((nodo) => {
     return nodo.data.materia.correlativas.flatMap((c) => {
-      const origen = nodosConPosicion.find(elem => { return elem.data.materia.codigo === c});
+      const origen = nodosConPosicion.find(elem => { return elem.data.materia.codigo === c });
       if (origen) {
         const id = `ed${origen.id}-${nodo.id}`
-        
+
         if (origen.data.materia.aprobada === 'aprobada' || origen.data.materia.aprobada === 'regular')
-          return [{id: id, source: origen.id, target: nodo.id}]
+          return [{ id: id, source: origen.id, target: nodo.id }]
         else
-          return [{id: id, source: origen.id, target: nodo.id, style: { strokeDasharray: '5 5'}}]
+          return [{ id: id, source: origen.id, target: nodo.id, style: { strokeDasharray: '5 5' } }]
       }
       else {
         return []
@@ -102,15 +131,16 @@ function App() {
     })
   });
 
+  // Cálculo automático de posiciones de los nodos
   useEffect(
     () => {
 
       const dagreGraph = new dagre.graphlib.Graph();
       dagreGraph.setDefaultEdgeLabel(() => ({}));
-      dagreGraph.setGraph({rankdir: 'TB'});
+      dagreGraph.setGraph({ rankdir: 'TB' });
 
       materias.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: ancho, height: alto})
+        dagreGraph.setNode(node.id, { width: ancho, height: alto })
       });
 
       edges.forEach((edge) => {
@@ -122,9 +152,9 @@ function App() {
       const nodosNuevos = materias.map((node) => {
         const posicionCalculada = dagreGraph.node(node.id);
         return {
-          ... node,
+          ...node,
           position: {
-            x: posicionCalculada.x - ancho / 2, 
+            x: posicionCalculada.x - ancho / 2,
             y: posicionCalculada.y - alto / 2
           }
         }
@@ -133,19 +163,21 @@ function App() {
       setNodosConPosicion(nodosNuevos);
     }, []);
 
+  // Grafo mostrado en pantalla en sí
   return (
     <>
-      <AccionesContext.Provider value={{aprobar: marcarAprobada, regularizar: marcarRegularizada, estadoVisual: estadoMateria}}>
-          <div style={{ height: '100vh' }}>
-            <ReactFlow nodes={nodosConPosicion} edges={edges} nodeTypes={nodeTypes}>
-              <Background />
-            </ReactFlow>
-          </div>
+      <AccionesContext.Provider value={{ aprobar: marcarAprobada, regularizar: marcarRegularizada, estadoVisual: estadoMateria }}>
+        <div style={{ height: '100vh' }}>
+          <ReactFlow nodes={nodosConPosicion} edges={edges} nodeTypes={nodeTypes}>
+            <Background />
+          </ReactFlow>
+        </div>
       </AccionesContext.Provider>
     </>
   )
 }
 
+// Nodo de una materia en estatus inicial
 function NodoMateria({ data }: NodeProps<materiaNode>) {
   const accion = useContext(AccionesContext);
   return (
