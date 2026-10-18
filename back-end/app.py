@@ -3,7 +3,7 @@ import sqlite3
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173/"])
+CORS(app, origins=["http://localhost:5173"])
 
 DB_PATH = "database/mapa.db"
 
@@ -72,3 +72,6 @@ def hola():
 
 # TODO: La idea es procesar la base de datos de MATERIAS, cargarla como un objeto de algún tipo
 # Luego, lo paso como JSX o como se haga al React
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
