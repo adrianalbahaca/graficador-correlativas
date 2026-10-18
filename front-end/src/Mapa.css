@@ -160,7 +160,7 @@
 /* Libre (habilitada: se puede cursar o rendir libre): el malva casi
    transparente, con borde grueso para que resalte.
    color-mix(...) mezcla el color con transparencia: 20% = bien clarito. */
-.nodo-materia--libre {
+.nodo-materia--cursable {
   --nodo-fondo: color-mix(in srgb, var(--mapa-malva) 20%, transparent);
   --nodo-borde: var(--mapa-violeta);
   --nodo-grosor: 3px;

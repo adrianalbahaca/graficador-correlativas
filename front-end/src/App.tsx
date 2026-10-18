@@ -1,6 +1,6 @@
 import { useState, createContext, useContext, useEffect } from 'react'
 import { ReactFlow, type Node, type Edge, type NodeProps, Background, Handle, Position } from '@xyflow/react'
-import { type Materia, type Estado } from './types/Materia.ts'
+import { type Materia } from './types/Materia.ts'
 import '@xyflow/react/dist/style.css'
 import './Mapa.css'
 import dagre from '@dagrejs/dagre'
@@ -33,6 +33,26 @@ const AccionesContext = createContext<Acciones>({
   estadoVisual: () => { return 'bloqueada' }
 })
 
+// Cálculo automático de edges según las correlativas correspondientes
+function calcularEdges(nodos : materiaNode[]) : Edge[] {
+  return nodos.flatMap((nodo) => {
+    return nodo.data.materia.correlativas.flatMap((c) => {
+      const origen = nodos.find(elem => { return elem.data.materia.codigo === c });
+      if (origen) {
+        const id = `ed${origen.id}-${nodo.id}`
+
+        if (origen.data.materia.aprobada === 'aprobada' || origen.data.materia.aprobada === 'regular')
+          return [{ id: id, source: origen.id, target: nodo.id }]
+        else
+          return [{ id: id, source: origen.id, target: nodo.id, style: { strokeDasharray: '5 5' } }]
+      }
+      else {
+        return []
+      }
+    })
+  });
+}
+
 /**
  * TODO: Organizar código ahora que se entiende el orden de las cosas
  * @returns 
@@ -40,18 +60,21 @@ const AccionesContext = createContext<Acciones>({
 
 function App() {
 
-  const nodos: materiaNode[] = [];
-
-  const [materias, setMaterias] = useState<materiaNode[]>(nodos);
-  const [nodosConPosicion, setNodosConPosicion] = useState<materiaNode[]>(nodos);
+  const [materias, setMaterias] = useState<materiaNode[]>([]);
+  const [nodosConPosicion, setNodosConPosicion] = useState<materiaNode[]>([]);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5000/api/materias/")
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP: ${response.status}`);
+        }
+        return response.json()})
       .then((datos: MateriaApi[]) => {
+        const nodos : materiaNode[] = [];
         for (let i = 0; i < datos.length; i++) {
           nodos.push({
-            id: `${i}`,
+            id: datos[i].codigo,
             type: 'materiaNode',
             position: { x: 0, y: 0 },
             data: {
@@ -113,24 +136,6 @@ function App() {
       setNodosConPosicion((prevMaterias) => prevMaterias.map(m => m.data.materia.codigo === codigo ? { ...m, data: { ...m.data, materia: { ...m.data.materia, aprobada: 'regular' } } } : m));
   }
 
-  // Cálculo automatico de edges para el grafo
-  const edges: Edge[] = nodosConPosicion.flatMap((nodo) => {
-    return nodo.data.materia.correlativas.flatMap((c) => {
-      const origen = nodosConPosicion.find(elem => { return elem.data.materia.codigo === c });
-      if (origen) {
-        const id = `ed${origen.id}-${nodo.id}`
-
-        if (origen.data.materia.aprobada === 'aprobada' || origen.data.materia.aprobada === 'regular')
-          return [{ id: id, source: origen.id, target: nodo.id }]
-        else
-          return [{ id: id, source: origen.id, target: nodo.id, style: { strokeDasharray: '5 5' } }]
-      }
-      else {
-        return []
-      }
-    })
-  });
-
   // Cálculo automático de posiciones de los nodos
   useEffect(
     () => {
@@ -142,6 +147,8 @@ function App() {
       materias.forEach((node) => {
         dagreGraph.setNode(node.id, { width: ancho, height: alto })
       });
+
+      const edges : Edge[] = calcularEdges(materias);
 
       edges.forEach((edge) => {
         dagreGraph.setEdge(edge.source, edge.target)
@@ -161,14 +168,14 @@ function App() {
       })
 
       setNodosConPosicion(nodosNuevos);
-    }, []);
+    }, [materias]);
 
   // Grafo mostrado en pantalla en sí
   return (
     <>
       <AccionesContext.Provider value={{ aprobar: marcarAprobada, regularizar: marcarRegularizada, estadoVisual: estadoMateria }}>
         <div style={{ height: '100vh' }}>
-          <ReactFlow nodes={nodosConPosicion} edges={edges} nodeTypes={nodeTypes}>
+          <ReactFlow nodes={nodosConPosicion} edges={calcularEdges(nodosConPosicion)} nodeTypes={nodeTypes}>
             <Background />
           </ReactFlow>
         </div>
